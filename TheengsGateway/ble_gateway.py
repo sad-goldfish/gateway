@@ -77,6 +77,7 @@ class Gateway:
         self.stopped = False
         self.clock_updates: Dict[str, float] = {}
         self.published_messages = 0
+        self.poll = asyncio.Event()
 
     def connect_mqtt(self) -> None:
         """Connect to MQTT broker."""
@@ -88,6 +89,16 @@ class Gateway:
                 logger.info("Connected to MQTT Broker!")
                 client.publish(self.lwt_topic, "online", 0, True)
                 self.subscribe(self.sub_topic)
+
+                def on_poll_req(client_, userdata, msg) -> None:
+                    logger.info(
+                        "Received `%s` from `%s` topic",
+                        msg.payload.decode(),
+                        msg.topic,
+                    )
+                    self.poll.set()
+
+                self.client.message_callback_add("home/poll", on_poll_req)
             else:
                 logger.error(
                     "Failed to connect to MQTT broker %s:%d return code: %d",
@@ -299,7 +310,7 @@ class Gateway:
                     logger.info(
                         "Sent %s messages to MQTT", self.published_messages
                     )
-                    await asyncio.sleep(self.time_between_scans)
+                    await self.poll.wait()
 
                     # Update time for all clocks once a day
                     await self.update_clock_times()
