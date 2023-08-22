@@ -99,6 +99,7 @@ class Gateway:
                     self.poll.set()
 
                 self.client.message_callback_add("home/poll", on_poll_req)
+                self.client.subscribe("home/poll")
             else:
                 logger.error(
                     "Failed to connect to MQTT broker %s:%d return code: %d",
@@ -311,6 +312,7 @@ class Gateway:
                         "Sent %s messages to MQTT", self.published_messages
                     )
                     await self.poll.wait()
+                    self.poll.clear()
 
                     # Update time for all clocks once a day
                     await self.update_clock_times()
